@@ -47,6 +47,9 @@ public class LearningProgress {
     private String pendingAction;
     @Column(name = "pending_question_id")
     private Long pendingQuestionId;
+    /** Tries used on the pending question, counted on the server so a page refresh cannot reset them. */
+    @Column(name = "pending_attempts")
+    private int pendingAttempts;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
@@ -83,6 +86,12 @@ public class LearningProgress {
         this.pendingState = state;
         this.pendingAction = action;
         this.pendingQuestionId = questionId;
+        this.pendingAttempts = 0;
+    }
+
+    /** Records one more try on the pending question and returns its number (1 = first try). */
+    public int nextAttempt() {
+        return ++pendingAttempts;
     }
 
     public void clearPending() {

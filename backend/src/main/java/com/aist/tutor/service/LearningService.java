@@ -226,11 +226,13 @@ public class LearningService {
         Question question = questions.findById(req.questionId()).orElseThrow(() -> ApiException.notFound("Question"));
 
         boolean correct = question.isCorrect(req.answer());
-        int attempt = Math.min(req.attemptNumber(), profile.maxAttempts());
+        // Counted on the server: the client's attemptNumber resets on a page refresh.
+        int attempt = Math.min(progress.nextAttempt(), profile.maxAttempts());
         boolean finished = correct || attempt >= profile.maxAttempts();
         TutorContext ctx = context(student, chapter, profile, progress, question, attempt);
 
         if (!finished) {
+            progressRepo.save(progress);
             int left = profile.maxAttempts() - attempt;
             return new AnswerResponse(false, false, left, question.getHint(), null, null,
                     tutor.feedback(ctx, question, false, false, left), null, toProgress(progress),
@@ -288,8 +290,9 @@ public class LearningService {
     // ---------------------------------------------------------------- helpers
 
     private LearningProgress progressFor(Student student, Chapter chapter, AccommodationProfile profile) {
-        return progressRepo.findByStudentIdAndChapterId(student.getId(), chapter.getId())
-                .orElseGet(() -> progressRepo.save(new LearningProgress(student.getId(), chapter, profile.startDifficulty())));
+        // A plain find-then-save fails with a unique-key error when two requests race (e.g. React StrictMode).
+        progressRepo.insertIfAbsent(student.getId(), chapter.getId(), profile.startDifficulty().name());
+        return progressRepo.findByStudentIdAndChapterId(student.getId(), chapter.getId()).orElseThrow();
     }
 
     private List<Outcome> recentOutcomes(Long studentId, Long chapterId) {
