@@ -1,81 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { graphemes } from '../motion.js'
-import { ArrowDefs, SCENES, clamp, pop, seg } from './scenes.jsx'
+import { ArrowDefs, clamp } from './scenes.jsx'
+import { SCENES } from './library.js'
+import { presenterFrames } from './presenter.jsx'
 
 const osReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-const sentences = (text) => (text || '').split(/(?<=[.!?])\s+/).filter(Boolean)
-
-/** Frames built from the lesson step itself: used for every idea, after a matching scene or on their own. */
-function lessonFrames(step, withIntro) {
-  const frames = []
-  if (withIntro) {
-    const words = step.point.split(/\s+/)
-    frames.push({
-      caption: 'Here is the idea.', say: step.point, duration: 600 + words.length * 350, html: true,
-      draw: (t) => (
-        <div className="g-frame">
-          <div className="g-icon">💡</div>
-          <p className="g-idea">{words.map((w, i) => (
-            <span key={i} className={`g-word ${i < Math.ceil(t * words.length) ? 'in' : ''}`}>{w} </span>
-          ))}</p>
-        </div>
-      ),
-    })
-    const parts = sentences(step.picture)
-    if (parts.length) {
-      frames.push({
-        caption: "Let's picture it.", say: step.picture, duration: 1500 + parts.length * 2200, html: true,
-        draw: (t, ms) => (
-          <div className="g-frame">
-            <div className="g-icon" style={{ transform: `translateY(${Math.sin(ms / 400) * 4}px)` }}>🎨</div>
-            {parts.map((p, i) => (
-              <p key={i} className={`g-line ${t * parts.length > i ? 'in' : ''}`}>{p}</p>
-            ))}
-          </div>
-        ),
-      })
-    }
-  }
-  const ex = step.example
-  if (ex) {
-    const lines = (ex.visual || '').split('\n').map(graphemes)
-    const total = lines.reduce((n, l) => n + l.length, 0)
-    frames.push({
-      caption: 'Now look at the example from your lesson.', say: `${ex.title}. ${ex.content}`, duration: 3500 + total * 60, html: true,
-      draw: (t) => {
-        let count = 0
-        const shown = seg(t, 0.35, 1) * total
-        return (
-          <div className="g-frame">
-            <h3 className="g-title">✏️ {ex.title}</h3>
-            <p className={`g-line ${t > 0.05 ? 'in' : ''}`}>{ex.content}</p>
-            {total > 0 && (
-              <pre className="visual big animated g-visual">
-                {lines.map((chars, li) => (
-                  <span key={li}>
-                    {chars.map((ch, ci) => <span key={ci} className={`v-ch ${count++ < shown ? 'in' : ''}`}>{ch}</span>)}
-                    {li < lines.length - 1 && '\n'}
-                  </span>
-                ))}
-              </pre>
-            )}
-          </div>
-        )
-      },
-    })
-  }
-  frames.push({
-    caption: 'Remember this! ⭐', say: `Remember: ${step.point}`, duration: 3000, html: true,
-    draw: (t) => (
-      <div className="g-frame">
-        <div className="g-star" style={{ transform: `scale(${Math.max(pop(seg(t, 0, 0.4)), 0.001)}) rotate(${clamp(t * 2) * 360}deg)` }}>⭐</div>
-        <p className="g-idea remember" style={{ opacity: seg(t, 0.25, 0.6) }}>{step.point}</p>
-      </div>
-    ),
-  })
-  return frames
-}
-
 /** Time since the frame started, driven by requestAnimationFrame so it also works in calm mode (no CSS motion). */
 function useClock(playing, resetKey) {
   const [ms, setMs] = useState(0)
@@ -108,9 +36,9 @@ function speak(text) {
  * Plays an idea as a short animated, narrated story (special-needs learners only).
  * Calm voice: slower, and the learner moves on with "Next" so nothing changes unexpectedly.
  */
-export default function AnimationPlayer({ step, index, total, profile, voice, onClose }) {
+export default function AnimationPlayer({ step, index, total, subject, profile, voice, onClose }) {
   const scene = SCENES[step.scene]
-  const frames = useMemo(() => [...(scene?.frames ?? []), ...lessonFrames(step, !scene)], [step, scene])
+  const frames = useMemo(() => [...(scene?.frames ?? []), ...presenterFrames(step, subject, { withIdea: !scene })], [step, scene, subject])
   const manual = voice === 'calm'
   const reduced = osReducedMotion()
   const [f, setF] = useState(0)
@@ -175,14 +103,10 @@ export default function AnimationPlayer({ step, index, total, profile, voice, on
         ) : (
           <>
             <div className="anim-stage">
-              {frame.html
-                ? frame.draw(t, drawMs)
-                : (
-                  <svg viewBox="0 0 400 260" role="img" aria-label={frame.caption}>
-                    <ArrowDefs />
-                    {frame.draw(t, drawMs)}
-                  </svg>
-                )}
+              <svg viewBox="0 0 400 260" role="img" aria-label={frame.caption}>
+                <ArrowDefs />
+                {frame.draw(t, drawMs)}
+              </svg>
             </div>
             <p className="anim-caption" aria-live="polite">{frame.caption}</p>
             <div className="anim-progress" aria-hidden>

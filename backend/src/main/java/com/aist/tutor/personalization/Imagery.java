@@ -2,9 +2,11 @@ package com.aist.tutor.personalization;
 
 import com.aist.tutor.domain.Chapter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -139,6 +141,106 @@ public final class Imagery {
             p("program|code|python", "Imagine giving very exact instructions to a robot that does exactly what you say, nothing more. That is programming.")
     );
 
+    /** Topics that have an animated scene but no picture in words of their own. Stems use \\w*. */
+    private record Topic(String scene, Pattern keywords) {}
+
+    private static Topic topic(String scene, String regex) {
+        return new Topic(scene, Pattern.compile("\\b(" + regex + ")(s|es)?\\b", Pattern.CASE_INSENSITIVE));
+    }
+
+    private static final List<Topic> TOPICS = List.of(
+            // Mathematics
+            topic("place-value", "place value|large numbers?|knowing our numbers|numerals?|estimat\\w*"),
+            topic("fraction", "fraction|numerator|denominator|decimal"),
+            topic("integer", "integer|negative numbers?"),
+            topic("factor-tree", "prime factori\\w*|factor tree|hcf|lcm|highest common factor|lowest common multiple|fundamental theorem of arithmetic|composite|euclid\\w*"),
+            topic("number-line", "number line|rational|irrational|whole numbers?|natural numbers?"),
+            topic("equation", "equation|algebra\\w*|solve|solving"),
+            topic("graph-line", "equations? in two variables|graph|coordinate|straight lines?|slope|polynomial|quadratic|parabola|plot\\w*|x-axis|y-axis|zeroe?s of"),
+            topic("progression", "progression|sequence|series|nth term|common difference|pattern"),
+            topic("probability", "probabilit\\w*|chance|likely|outcome|coin|dice|random"),
+            topic("right-triangle", "trigonometr\\w*|sine|cosine|sin|cos|tan|hypotenuse|pythagora\\w*|right.angled|triangle|heron\\w*"),
+            topic("angle", "angle|lines and angles|parallel|perpendicular|geometr\\w*|polygon|shape|line segment"),
+            topic("area-perimeter", "perimeter|area|mensuration"),
+            topic("venn", "set|subset|union|intersection|venn|relation"),
+            topic("powers", "exponent|powers? of|square numbers?|square roots?|cube|scientific notation|index form"),
+            topic("percent", "percent\\w*|profit|loss|discount|interest|comparing quantities|ratio"),
+            topic("arrange", "permutation|combination|arrangement|factorial|number of ways|ways to arrange"),
+            topic("area-under-curve", "integra\\w*|antiderivative|area under"),
+            topic("tangent", "continu\\w*|differentia\\w*|derivative|limit|rate of change"),
+            topic("function-machine", "function|mapping|domain|range|inverse|matri\\w*|determinant"),
+            topic("bar-chart", "arithmetic mean|mean value|the mean|median|mode|average|central tendency|data|statistic\\w*|frequency|bar graph"),
+            topic("measure", "measure\\w*|units of measurement|metre|centimetre|kilogram|distance|si units?"),
+            // Science
+            topic("photosynthesis", "photosynth\\w*|chlorophyll|nutrition in plants|autotroph\\w*|stomata"),
+            topic("food-chain", "food chain|food web|ecosystem|environment|habitat|decomposer|ozone"),
+            topic("water-cycle", "water cycle|water|rain\\w*|cloud|air|atmosphere|weather|climate|wind"),
+            topic("matter", "matter|solid|liquid|gas|particle|states of|diffusion|surroundings"),
+            topic("earth-sun", "solar system|planet|sun|rotation|revolution(?=\\s+(of|is|around|takes))|revolv\\w*|day and night|season|orbit|motions of the earth"),
+            topic("gravity", "gravit\\w*|weight|free fall|falling"),
+            topic("atom", "atom\\w*|electron|proton|neutron|molecule|valency|bond\\w*|ion|mole|isotope|chemical formula|basic concepts of chemistry"),
+            topic("motion-force", "force|motion|newton|inertia|momentum|accelerat\\w*|velocity|speed|pressure|push|pull|work done"),
+            topic("energy", "energy|power plant|fuel|renewable|solar|kinetic energy|potential energy|work, energy|sources of energy"),
+            topic("light-ray", "light|reflect\\w*|refract\\w*|mirror|lens|ray|optic\\w*|eye|spectrum|rainbow|photo\\w*|radiation|shadow|dual nature"),
+            topic("sound-wave", "sound|vibrat\\w*|echo|pitch|loud\\w*|wave"),
+            topic("magnet", "magnet\\w*|electromagnet\\w*|induction|compass|pole"),
+            topic("circuit", "electric\\w*|circuit|current|voltage|resistance|battery|batteries|charge|ohm"),
+            topic("breathing", "breath\\w*|respirat\\w*|lung|oxygen|blood|heart|circulat\\w*|life process\\w*|excret\\w*|kidney|digest\\w*"),
+            topic("cell-division", "cell|tissue|mitosis|meiosis|cell division|reproduc\\w*|microorganism|organism|bacteri\\w*|fung\\w*"),
+            topic("heredity", "heredit\\w*|inherit\\w*|gene|dna|chromosome|trait|evolution|variation|biotechnolog\\w*|mendel"),
+            topic("reaction", "reaction|acid|alkali\\w*|salt|indicator|neutrali\\w*|metal|non-metal|corrosion|rust|carbon compound|solute|solvent|dissolv\\w*|electrochem\\w*|kinetics|combust\\w*|carbon and its compounds"),
+            topic("heat", "heat|temperature|thermo\\w*|conduct\\w*|convect\\w*|insulat\\w*|melting|boiling"),
+            topic("separation", "is matter around us pure|separat\\w*|mixture|filtrat\\w*|pure|impure|sieving|decant\\w*"),
+            topic("nutrients", "biomolecule|food|nutri\\w*|diet|vitamin|protein|carbohydrate|fat|components of food"),
+            topic("germs", "germ|disease|ill|infect\\w*|immun\\w*|vaccin\\w*|health|microbe|pathogen|fall ill"),
+            topic("periodic", "classification of elements|periodic\\w*|elements?|mendeleev|d-block|f-block|d- and f-block"),
+            topic("classify", "classif\\w*|kingdom|species|diversity in living|living world|taxonom\\w*|vertebrate"),
+            topic("reflex", "nerv\\w*|brain|reflex|hormone|coordination|neuron|spinal"),
+            topic("plant-growth", "crop|agricultur\\w*|farm\\w*|irrigation|harvest\\w*|soil|resource|forest|conserv\\w*|food resource|manure|fertili\\w*"),
+            // Social Science
+            topic("vote", "democra\\w*|election|vote|voting|electoral|parliament"),
+            topic("globe", "globe|latitude|longitude|map|size and location|equator|meridian|tropic"),
+            topic("timeline", "history|revolution|nationalism|freedom struggle|empire|king|ancient|early humans|medieval|colonial|independence|hunting"),
+            topic("society", "diversit\\w*|equality|constitution|judiciary|court|power sharing|rights|federal\\w*|community|gender|caste|government"),
+            topic("earth-layers", "inside our earth|crust|mantle|core|volcano|earthquake|rock|plate"),
+            topic("landforms", "physical features|mountain|plain|plateau|desert|coast|island|river|himalaya\\w*|landform|relief"),
+            topic("factory", "industr\\w*|sector|manufactur\\w*|factory|factories|primary|secondary|tertiary|raw material|employment"),
+            // English
+            topic("figurative", "figures? of speech|simile|metaphor|personification|idiom|phrase|vocabulary|word meaning|context"),
+            topic("letter", "letter writing|letter|writing|paragraph|notice|report|speech|debate|invitation|application|essay|format"),
+            topic("sentence-builder", "noun|pronoun|verb|adjective|adverb|article|preposition|conjunction|tense|voice|sentence|clause|determiner|modal|gerund|infinitive|subject|question tag|reported|phrasal|prefix|suffix|punctuation|grammar|editing|errors|conditional"),
+            // Economics
+            topic("supply-demand", "demand|supply|equilibrium|market|price|elasticit\\w*"),
+            topic("money-flow", "money|bank\\w*|credit|loan|income|budget|tax|gdp|national income|economy|economics|macroeconomics|exchange rate|balance of payments|saving|deposit"),
+            // Computer Science
+            topic("database", "database|sql|query|queries|record|dbms|file handling|file"),
+            topic("network", "network|internet|protocol|router|ip address|web|email|topology|lan|wan"),
+            topic("stack", "stack|list|dictionar\\w*|tuple|array|queue|push|pop|index"),
+            topic("binary", "binary|bit|byte|computer basics|hardware|software|memory|cpu|storage"),
+            topic("code-robot", "python|program\\w*|code|loop|condition\\w*|if statement|statement|string|algorithm|syntax|print|operator")
+    );
+
+    /** Which scenes suit which subjects, so a stray word (like "salt" in a history lesson) does not pick a science scene. */
+    private static final Set<String> MATH = Set.of("place-value", "fraction", "integer", "factor", "factor-tree", "number-line",
+            "equation", "graph-line", "progression", "probability", "right-triangle", "angle", "area-perimeter", "venn", "powers",
+            "percent", "arrange", "area-under-curve", "tangent", "function-machine", "bar-chart", "measure");
+    private static final Set<String> SCIENCE = Set.of("photosynthesis", "food-chain", "water-cycle", "matter", "earth-sun", "gravity",
+            "atom", "motion-force", "energy", "light-ray", "sound-wave", "magnet", "circuit", "breathing", "cell-division", "heredity",
+            "reaction", "heat", "separation", "nutrients", "germs", "periodic", "classify", "reflex", "plant-growth", "measure", "graph-line");
+    private static final Set<String> SOCIAL = Set.of("vote", "globe", "timeline", "society", "earth-layers", "landforms", "factory",
+            "money-flow", "plant-growth", "water-cycle", "earth-sun", "food-chain", "energy");
+    private static final Map<String, Set<String>> SUBJECT_GROUPS = Map.of(
+            "Mathematics", MATH, "Science", SCIENCE, "Physics", SCIENCE, "Chemistry", SCIENCE, "Biology", SCIENCE,
+            "Social Science", SOCIAL, "English", Set.of("sentence-builder", "letter", "figurative"),
+            "Economics", Set.of("supply-demand", "money-flow", "factory", "bar-chart", "percent"),
+            "Computer Science", Set.of("code-robot", "stack", "network", "binary", "database", "function-machine"));
+
+    /** When nothing in the idea or chapter name matches. */
+    private static final Map<String, String> SUBJECT_SCENES = Map.of(
+            "Mathematics", "number-line", "Science", "matter", "Physics", "motion-force", "Chemistry", "atom",
+            "Biology", "cell-division", "English", "sentence-builder", "Social Science", "timeline",
+            "Computer Science", "code-robot", "Economics", "money-flow");
+
     private Imagery() {
     }
 
@@ -147,8 +249,47 @@ public final class Imagery {
         return match(chapter, texts).text();
     }
 
-    /** The best picture and its animated scene, falling back to the chapter's own visual example. */
+    /**
+     * The best picture and its animated scene. The scene comes from the chapter name (which says what the whole
+     * chapter is about), then the idea itself, then the subject, so every lesson step has one.
+     */
     public static Match match(Chapter chapter, String... texts) {
+        return new Match(pictureFor(chapter, texts), sceneFor(chapter, texts));
+    }
+
+    static String sceneFor(Chapter chapter, String... texts) {
+        String subject = chapter.getSubject() == null ? null : chapter.getSubject().getName();
+        Set<String> allowed = subject == null ? null : SUBJECT_GROUPS.get(subject);
+        String scene = earliestScene(chapter.getChapterName(), allowed);
+        if (scene != null) return scene;
+        for (String text : texts) {
+            scene = earliestScene(text, allowed);
+            if (scene != null) return scene;
+        }
+        return subject == null ? "number-line" : SUBJECT_SCENES.getOrDefault(subject, "number-line");
+    }
+
+    /** The allowed scene whose keyword appears earliest in the text (the longer keyword on a tie), or null. */
+    private static String earliestScene(String text, Set<String> allowed) {
+        if (text == null) return null;
+        List<Map.Entry<String, Pattern>> candidates = new ArrayList<>();
+        PICTURES.stream().filter(p -> p.scene() != null).forEach(p -> candidates.add(Map.entry(p.scene(), p.keywords())));
+        TOPICS.forEach(t -> candidates.add(Map.entry(t.scene(), t.keywords())));
+        String best = null;
+        int bestAt = Integer.MAX_VALUE, bestLen = 0;
+        for (Map.Entry<String, Pattern> c : candidates) {
+            if (allowed != null && !allowed.contains(c.getKey())) continue;
+            Matcher m = c.getValue().matcher(text);
+            if (m.find() && (m.start() < bestAt || (m.start() == bestAt && m.end() - m.start() > bestLen))) {
+                best = c.getKey();
+                bestAt = m.start();
+                bestLen = m.end() - m.start();
+            }
+        }
+        return best;
+    }
+
+    private static String pictureFor(Chapter chapter, String... texts) {
         for (String text : texts) {
             if (text == null) continue;
             // The picture whose keyword appears earliest in the text is the one the text is mainly about.
@@ -161,21 +302,21 @@ public final class Imagery {
                     bestAt = m.start();
                 }
             }
-            if (best != null) return new Match(best.text(), best.scene());
+            if (best != null) return best.text();
         }
         for (Picture pic : PICTURES) {
-            if (pic.keywords().matcher(chapter.getChapterName()).find()) return new Match(pic.text(), pic.scene());
+            if (pic.keywords().matcher(chapter.getChapterName()).find()) return pic.text();
         }
         for (Map<String, String> ex : chapter.getExamples()) {
             String visual = ex.getOrDefault("visual", "");
             if (!visual.isBlank()) {
-                return new Match("Picture this in your mind: " + visual + "\n(" + ex.get("content") + ")", null);
+                return "Picture this in your mind: " + visual + "\n(" + ex.get("content") + ")";
             }
         }
         if (!chapter.getExamples().isEmpty()) {
-            return new Match("Imagine you are watching this happen in front of you: " + chapter.getExamples().get(0).get("content"), null);
+            return "Imagine you are watching this happen in front of you: " + chapter.getExamples().get(0).get("content");
         }
-        return new Match("Imagine explaining \"" + chapter.getChapterName().toLowerCase(Locale.ROOT)
-                + "\" to a friend using things you can see around you.", null);
+        return "Imagine explaining \"" + chapter.getChapterName().toLowerCase(Locale.ROOT)
+                + "\" to a friend using things you can see around you.";
     }
 }

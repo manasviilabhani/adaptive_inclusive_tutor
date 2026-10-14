@@ -439,23 +439,14 @@ body.calm-mode .btn-animate { background: var(--primary); box-shadow: none; }
 .anim-end { text-align: center; padding: 24px 8px; }
 .anim-end-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 14px; }
 
-/* generic animation built from the lesson text */
-.g-frame { width: 100%; height: 100%; padding: 18px 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; }
-.g-icon { font-size: 2.6rem; }
-.g-star { font-size: 3.6rem; }
-.g-idea { font-size: 1.6rem; font-weight: 800; margin: 0; line-height: 1.4; }
-.g-idea.remember { color: var(--primary); }
-.g-word { opacity: 0; display: inline-block; transform: translateY(8px); transition: opacity .3s, transform .3s; }
-.g-word.in { opacity: 1; transform: none; }
-.g-line { font-size: 1.15rem; margin: 0; opacity: 0; transform: translateY(10px); transition: opacity .5s, transform .5s; }
-.g-line.in { opacity: 1; transform: none; }
-.g-title { margin: 0; }
-.g-visual { margin: 6px 0 0; }
+/* owl presenter speech bubble (inside an SVG foreignObject) */
+.owl-bubble {
+  font: 700 15px/1.35 var(--font); color: #1f2a44; height: 100%; display: flex; align-items: center;
+  overflow: hidden; word-break: break-word;
+}
 .anim-dialog.voice-calm .anim-stage { background: #f8f9fa; }
 
 @media (max-width: 560px) {
   .anim-dialog { padding: 14px 12px; }
   .anim-caption { font-size: 1.05rem; }
-  .g-idea { font-size: 1.2rem; }
-  .g-line { font-size: 1rem; }
 }

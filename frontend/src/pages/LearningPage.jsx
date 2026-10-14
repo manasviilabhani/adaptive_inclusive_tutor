@@ -180,7 +180,7 @@ export default function LearningPage({ student }) {
     <div className="page wide">
       {celebrate && <Celebration kind={celebrate} onDone={endCelebration} />}
       {animating !== null && lesson.steps[animating] && (
-        <AnimationPlayer step={lesson.steps[animating]} index={animating} total={lesson.steps.length}
+        <AnimationPlayer step={lesson.steps[animating]} index={animating} total={lesson.steps.length} subject={lesson.subjectName}
                          profile={profile} voice={voice} onClose={endAnimation} />
       )}
 

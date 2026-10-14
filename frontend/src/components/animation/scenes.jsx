@@ -20,34 +20,34 @@ export const pop = (x) => {
   const c1 = 1.70158, c3 = c1 + 1
   return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2)
 }
-const rad = (deg) => (deg * Math.PI) / 180
+export const rad = (deg) => (deg * Math.PI) / 180
 /** Bounces v back and forth between lo and hi. */
-const reflect = (v, lo, hi) => {
+export const reflect = (v, lo, hi) => {
   const span = hi - lo, period = 2 * span
   const m = ((v - lo) % period + period) % period
   return lo + (m < span ? m : period - m)
 }
 
-const C = {
+export const C = {
   ink: '#1f2a44', muted: '#65708a', primary: '#4f46e5', soft: '#eef0ff', green: '#2f9e44', leaf: '#51cf66',
   blue: '#339af0', sky: '#d0ebff', orange: '#f08c00', yellow: '#fcc419', red: '#e03131', crust: '#d08b2c', cheese: '#f6c453',
 }
 
-function Label({ x, y, children, size = 15, color = C.ink, show = 1, anchor = 'middle', weight = 800 }) {
+export function Label({ x, y, children, size = 15, color = C.ink, show = 1, anchor = 'middle', weight = 800 }) {
   return (
     <text x={x} y={y} fontSize={size} fontWeight={weight} fill={color} textAnchor={anchor} dominantBaseline="central"
           opacity={show} style={{ fontFamily: 'inherit' }}>{children}</text>
   )
 }
 
-function Emoji({ x, y, size = 28, scale = 1, children, opacity = 1 }) {
+export function Emoji({ x, y, size = 28, scale = 1, children, opacity = 1 }) {
   return (
     <text x={0} y={0} fontSize={size} textAnchor="middle" dominantBaseline="central" opacity={opacity}
           transform={`translate(${x} ${y}) scale(${Math.max(scale, 0.001)})`}>{children}</text>
   )
 }
 
-function Arrow({ x1, y1, x2, y2, progress = 1, color = C.muted, dashed = false }) {
+export function Arrow({ x1, y1, x2, y2, progress = 1, color = C.muted, dashed = false }) {
   if (progress <= 0) return null
   const x = lerp(x1, x2, progress), y = lerp(y1, y2, progress)
   return (
@@ -69,7 +69,7 @@ export const ArrowDefs = () => (
 )
 
 /** A pie wedge from angle a0 to a1 (degrees clockwise from 12 o'clock). */
-function wedge(cx, cy, r, a0, a1) {
+export function wedge(cx, cy, r, a0, a1) {
   const p = (a) => [cx + r * Math.sin(rad(a)), cy - r * Math.cos(rad(a))]
   const [x0, y0] = p(a0), [x1, y1] = p(a1)
   return `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1} Z`
@@ -513,7 +513,7 @@ const areaPerimeter = {
 // ------------------------------------------------------------------ photosynthesis: a leaf kitchen
 
 const LEAF = 'M130,150 Q230,40 330,150 Q230,250 130,150 Z'
-function Sun({ x = 55, y = 50, ms = 0, show = 1 }) {
+export function Sun({ x = 55, y = 50, ms = 0, show = 1 }) {
   return (
     <g opacity={show} transform={`translate(${x} ${y})`}>
       {Array.from({ length: 8 }, (_, k) => {
@@ -524,7 +524,7 @@ function Sun({ x = 55, y = 50, ms = 0, show = 1 }) {
     </g>
   )
 }
-const loop = (ms, period, offset = 0) => (((ms + offset) % period) + period) % period / period
+export const loop = (ms, period, offset = 0) => (((ms + offset) % period) + period) % period / period
 
 function LeafKitchen({ t, ms, stage }) {
   return (
@@ -685,7 +685,7 @@ const matter = {
 
 // ------------------------------------------------------------------ the water cycle
 
-function Cloud({ x, y, scale }) {
+export function Cloud({ x, y, scale }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${Math.max(scale, 0.001)})`}>
       {[[-30, 6, 22], [0, -6, 28], [30, 6, 22], [0, 12, 24]].map(([cx, cy, r], k) => <circle key={k} cx={cx} cy={cy} r={r} fill="#f1f3f5" stroke="#ced4da" />)}
