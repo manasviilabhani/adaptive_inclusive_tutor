@@ -2,6 +2,9 @@ package com.aist.tutor.tutor;
 
 import com.aist.tutor.adaptive.TutorAction;
 import com.aist.tutor.domain.Question;
+import com.aist.tutor.personalization.AccommodationProfile;
+
+import java.util.List;
 
 /**
  * The conversational tutor. The first implementation is rule-based; an LLM or RAG-backed
@@ -16,4 +19,10 @@ public interface TutorEngine {
 
     /** Message introducing the next activity chosen by the adaptive engine. */
     String introduceActivity(TutorContext context, TutorAction action);
+
+    /** How the tutor speaks to this learner (e.g. "standard", "gentle"); the chat UI styles itself to match. */
+    String voice(AccommodationProfile profile);
+
+    /** Quick-reply chips shown before the student has said anything. */
+    List<String> starterChips(AccommodationProfile profile);
 }

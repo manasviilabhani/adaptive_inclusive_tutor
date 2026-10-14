@@ -6,7 +6,7 @@ import AnimatedVisual from './AnimatedVisual.jsx'
  * One idea at a time: the idea in simple words, a "tell me more" explanation,
  * and an example (with an animated picture when available).
  */
-export default function StepByStepLesson({ steps, profile, onFinish }) {
+export default function StepByStepLesson({ steps, profile, onFinish, onAnimate }) {
   const [i, setI] = useState(0)
   const [more, setMore] = useState(false)
   const [done, setDone] = useState(false)
@@ -40,6 +40,13 @@ export default function StepByStepLesson({ steps, profile, onFinish }) {
         <span className="idea-no" aria-hidden>{i + 1}</span>
         <ReadAlong text={step.point} className="idea-text" enabled={profile.readAloud} />
       </div>
+
+      {onAnimate && (
+        <div className="animate-offer">
+          <button className="btn-animate" onClick={() => onAnimate(i)}>🎬 Animate it</button>
+          <span className="muted small">Not sure yet? Watch this idea come to life.</span>
+        </div>
+      )}
 
       {step.detail && (
         more ? (

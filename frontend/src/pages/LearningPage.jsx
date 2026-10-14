@@ -8,6 +8,7 @@ import ActivityCard from '../components/ActivityCard.jsx'
 import AdaptivePanel from '../components/AdaptivePanel.jsx'
 import TutorChat from '../components/TutorChat.jsx'
 import Celebration from '../components/Celebration.jsx'
+import AnimationPlayer from '../components/animation/AnimationPlayer.jsx'
 
 const TABS = [
   { id: 'learn', label: 'Learn', icon: '📘' },
@@ -26,14 +27,18 @@ export default function LearningPage({ student }) {
   const [messages, setMessages] = useState([])
   const [chips, setChips] = useState(DEFAULT_CHIPS)
   const [turn, setTurn] = useState(0)
+  const [chatStep, setChatStep] = useState(null)   // which idea the tutor is walking through
+  const [check, setCheck] = useState(null)         // quick check asked in the chat: { id, attempt }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('learn')
   const [celebrate, setCelebrate] = useState(null)
+  const [animating, setAnimating] = useState(null)   // index of the idea being animated
 
   const say = (text, from = 'tutor') => setMessages((m) => [...m, { from, text }])
   const firstName = student.name.split(' ')[0]
   const profile = lesson?.profile
+  const voice = lesson?.tutorVoice ?? 'standard'
   // One section at a time for learners who benefit from focus / predictable structure.
   const tabbed = !!(profile?.focusMode || profile?.structuredFlow)
 
@@ -56,6 +61,8 @@ export default function LearningPage({ student }) {
   useEffect(() => {
     setActivity(null)
     setLearning(null)
+    setChatStep(null)
+    setCheck(null)
     setTab('learn')
     api.lesson(student.id, chapterId)
       .then((l) => {
@@ -63,12 +70,19 @@ export default function LearningPage({ student }) {
         setProgress(l.progress)
         setCompletion(l.completion)
         const started = l.progress.questionsAttempted > 0
-        const intro = l.profile.structuredFlow
+        const intro = l.tutorVoice === 'calm' || l.profile.structuredFlow
           ? `Hi ${firstName}! Today we learn "${l.chapterName}". We will do 3 steps: 1. Learn, 2. Examples, 3. Practice. Start with step 1. Ask me anything at any time.`
+          : l.tutorVoice === 'gentle'
+            ? started
+              ? `Welcome back, ${firstName}! 💛 You're already ${l.completion.percent}% through "${l.chapterName}". I'm so glad you're here. Shall we keep going, nice and slowly?`
+              : `Hi ${firstName}! 👋 I'm your learning buddy. Today we'll explore "${l.chapterName}" together, one small idea at a time. There's no rush, and no question is silly. Tap "Teach me step by step" to begin! 🌱`
+          : l.tutorVoice === 'lively'
+            ? `Hey ${firstName}! 👋 Ready for "${l.chapterName}"? Bite-sized ideas, quick checks, quick wins. Let's go! ⚡`
           : started
             ? `Welcome back, ${firstName}! You're ${l.completion.percent}% through "${l.chapterName}". Let's keep going!`
             : `Hi ${firstName}! Let's learn "${l.chapterName}" together. Read the lesson, then start practice — or ask me anything.`
         setMessages([{ from: 'tutor', text: intro }])
+        setChips(l.tutorChips?.length ? l.tutorChips : DEFAULT_CHIPS)
         // Continue exactly where the student left off.
         if (l.hasPendingActivity) nextActivity()
       })
@@ -94,15 +108,26 @@ export default function LearningPage({ student }) {
     }
   }
 
-  const sendChat = async (message) => {
+  const sendChat = async (message, { step } = {}) => {
     say(message, 'student')
     setBusy(true)
     try {
-      const reply = await api.chat(student.id, { chapterId: Number(chapterId), questionId: activity?.question.id ?? null, message, turn })
+      const reply = await api.chat(student.id, {
+        chapterId: Number(chapterId), questionId: activity?.question.id ?? null, message, turn,
+        step: step ?? chatStep, checkQuestionId: check?.id ?? null, checkAttempt: check?.attempt ?? null,
+      })
       setTurn(turn + 1)
       say(reply.text)
-      setChips(reply.suggestions?.length ? reply.suggestions : DEFAULT_CHIPS)
-      if (reply.suggestedAction === 'NEXT_ACTIVITY' && !activity) await nextActivity()
+      if (reply.step != null) setChatStep(reply.step)
+      setCheck(reply.checkQuestionId ? { id: reply.checkQuestionId, attempt: reply.checkAttempt ?? 1 } : null)
+      setChips(reply.suggestions?.length ? reply.suggestions : (lesson?.tutorChips ?? DEFAULT_CHIPS))
+      if (reply.suggestedAction === 'ANIMATE' && lesson?.steps.length) {
+        setAnimating(Math.min(reply.step ?? 0, lesson.steps.length - 1))
+      }
+      if (reply.suggestedAction === 'NEXT_ACTIVITY') {
+        if (activity) setTab('practice')
+        else await nextActivity()
+      }
     } catch (e) {
       say(`Sorry, I couldn't answer that just now (${e.message}).`)
     } finally {
@@ -111,6 +136,21 @@ export default function LearningPage({ student }) {
   }
 
   const endCelebration = useCallback(() => setCelebrate(null), [])
+
+  const endAnimation = (result) => {
+    const i = animating
+    setAnimating(null)
+    if (result === 'helped') {
+      say(voice === 'calm'
+        ? 'Good. You watched idea ' + (i + 1) + '. Next: tap "Next idea" or "Check my understanding".'
+        : `Yay, ${firstName}! 🌟 I'm so glad the animation helped. Want to try a tiny check to see how well it stuck?`)
+      setChips(['Check my understanding', 'Next idea ▶'])
+      setChatStep(i)
+    } else if (result === 'confused') {
+      setChatStep(i)
+      sendChat("I'm still confused", { step: i })
+    }
+  }
 
   if (error && !lesson) {
     return (
@@ -139,6 +179,10 @@ export default function LearningPage({ student }) {
   return (
     <div className="page wide">
       {celebrate && <Celebration kind={celebrate} onDone={endCelebration} />}
+      {animating !== null && lesson.steps[animating] && (
+        <AnimationPlayer step={lesson.steps[animating]} index={animating} total={lesson.steps.length}
+                         profile={profile} voice={voice} onClose={endAnimation} />
+      )}
 
       <header className="topbar">
         <div>
@@ -175,7 +219,8 @@ export default function LearningPage({ student }) {
       <div className="learn-grid">
         <main className="learn-main">
           {show('learn') && (profile.stepByStep && lesson.steps.length
-            ? <StepByStepLesson steps={lesson.steps} profile={profile} onFinish={() => goTab('examples')} />
+            ? <StepByStepLesson steps={lesson.steps} profile={profile} onFinish={() => goTab('examples')}
+                                onAnimate={(i) => setAnimating(i)} />
             : <LearnCard lesson={lesson} />)}
           {show('learn') && tabbed && !profile.stepByStep && (
             <button className="btn-primary" onClick={() => goTab('examples')}>Next: Examples →</button>
@@ -193,7 +238,8 @@ export default function LearningPage({ student }) {
         </main>
 
         <aside className="learn-side">
-          <TutorChat messages={messages} suggestions={chips} onSend={sendChat} readAloud={profile.readAloud} busy={busy} />
+          <TutorChat messages={messages} suggestions={chips} onSend={sendChat} readAloud={profile.readAloud} busy={busy}
+                     voice={voice} checking={!!check} />
           <AdaptivePanel progress={progress} decision={activity?.decision} learning={learning} />
         </aside>
       </div>

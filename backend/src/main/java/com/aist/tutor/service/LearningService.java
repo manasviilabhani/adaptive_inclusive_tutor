@@ -77,7 +77,8 @@ public class LearningService {
                 profile.stepByStep() ? composer.steps(chapter) : List.of(),
                 profile.guidedExamples() ? composer.guidedExamples(questionsByDifficulty(chapter.getId())) : List.of(),
                 CompletionView.of(completion.forChapter(studentId, chapterId)),
-                progress.getPendingQuestionId() != null);
+                progress.getPendingQuestionId() != null,
+                tutor.voice(profile), tutor.starterChips(profile));
     }
 
     private Map<Difficulty, List<Question>> questionsByDifficulty(Long chapterId) {
@@ -282,9 +283,29 @@ public class LearningService {
         Chapter chapter = curriculum.requireChapterFor(student, req.chapterId());
         AccommodationProfile profile = accommodations.profileFor(student);
         LearningProgress progress = progressFor(student, chapter, profile);
-        Question current = req.questionId() == null ? null : questions.findById(req.questionId())
+        Question current = inChapter(req.questionId(), chapter);
+        Question pendingCheck = inChapter(req.checkQuestionId(), chapter);
+        TutorContext ctx = new TutorContext(student.getName().split(" ")[0], chapter, profile,
+                progress.getCurrentDifficulty(), current, req.turn(), composer.steps(chapter),
+                req.step() == null ? -1 : req.step(), pendingCheck,
+                req.checkAttempt() == null ? 1 : req.checkAttempt(),
+                checkCandidate(chapter, progress.getCurrentDifficulty(), current, req.turn()));
+        return tutor.reply(ctx, req.message());
+    }
+
+    private Question inChapter(Long questionId, Chapter chapter) {
+        return questionId == null ? null : questions.findById(questionId)
                 .filter(q -> q.getChapter().getId().equals(chapter.getId())).orElse(null);
-        return tutor.reply(context(student, chapter, profile, progress, current, req.turn()), req.message());
+    }
+
+    /** A multiple-choice question at or below the student's level for a quick check in the chat (never the one on screen). */
+    private Question checkCandidate(Chapter chapter, Difficulty level, Question onScreen, int turn) {
+        List<Question> pool = new ArrayList<>(questions.findByChapterIdAndDifficultyOrderByIdAsc(chapter.getId(), Difficulty.EASY));
+        if (level != Difficulty.EASY) {
+            pool.addAll(questions.findByChapterIdAndDifficultyOrderByIdAsc(chapter.getId(), Difficulty.MEDIUM));
+        }
+        pool.removeIf(q -> q.getOptions().isEmpty() || (onScreen != null && q.getId().equals(onScreen.getId())));
+        return pool.isEmpty() ? null : pool.get(Math.floorMod(turn, pool.size()));
     }
 
     // ---------------------------------------------------------------- helpers

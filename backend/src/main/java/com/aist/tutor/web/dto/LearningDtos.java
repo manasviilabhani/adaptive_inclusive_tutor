@@ -24,7 +24,8 @@ public final class LearningDtos {
                                  List<Map<String, String>> examples, String activity,
                                  ProgressResponse progress, AccommodationProfile profile,
                                  List<Step> steps, List<GuidedExample> guidedExamples,
-                                 CompletionView completion, boolean hasPendingActivity) {
+                                 CompletionView completion, boolean hasPendingActivity,
+                                 String tutorVoice, List<String> tutorChips) {
     }
 
     /** Chapter mastery as shown to the student. */
@@ -90,6 +91,7 @@ public final class LearningDtos {
                                    List<String> strengths, List<String> struggles) {
     }
 
-    public record ChatRequest(@NotNull Long chapterId, Long questionId, @NotBlank String message, @Min(0) int turn) {
+    public record ChatRequest(@NotNull Long chapterId, Long questionId, @NotBlank String message, @Min(0) int turn,
+                              Integer step, Long checkQuestionId, Integer checkAttempt) {
     }
 }

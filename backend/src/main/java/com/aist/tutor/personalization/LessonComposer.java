@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
  * Builds the extra teaching material used for accommodated learners from the existing chapter content:
  * <ul>
  *   <li><b>Steps</b>: each key idea paired with the explanation sentence that expands on it and a matching example.</li>
+ *   <li><b>Pictures</b>: an everyday image of each idea, and the animated scene that shows it.</li>
  *   <li><b>Guided examples</b>: questions solved step by step (read → think → answer → why).</li>
  * </ul>
  * Deriving these from the chapter keeps them consistent with the lesson, and any new chapter gets them for free.
@@ -19,7 +20,11 @@ import java.util.stream.Collectors;
 @Component
 public class LessonComposer {
 
-    public record Step(String point, String detail, Map<String, String> example) {}
+    /**
+     * @param picture an everyday image of the idea, in words
+     * @param scene   the animated scene that shows it (null = the generic animation built from this step)
+     */
+    public record Step(String point, String detail, Map<String, String> example, String picture, String scene) {}
 
     public record GuidedExample(Long questionId, String prompt, List<String> options, String think, String answer,
                                 String why) {}
@@ -66,7 +71,8 @@ public class LessonComposer {
                                 .orElse(examples.get(fallback % examples.size())));   // every idea gets an example
                 usedExamples.add(example);
             }
-            steps.add(new Step(point, detail, example));
+            Imagery.Match image = Imagery.match(chapter, point, detail);
+            steps.add(new Step(point, detail, example, image.text(), image.scene()));
         }
         return steps;
     }
